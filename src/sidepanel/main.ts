@@ -178,6 +178,15 @@ class KungfuApp {
     const container = document.createElement('div');
     container.className = 'space-y-4';
 
+    // Page context info
+    const pageInfo = document.createElement('div');
+    pageInfo.className = 'bg-muted/50 p-3 rounded-lg text-xs';
+    const pageInfoText = document.createElement('p');
+    pageInfoText.className = 'text-muted-foreground';
+    pageInfoText.innerHTML = `<strong>Current page:</strong> ${extractDomain(this.tabInfo.url)}`;
+    pageInfo.appendChild(pageInfoText);
+    container.appendChild(pageInfo);
+
     // New note form
     const form = document.createElement('div');
     form.className = 'space-y-3';
@@ -198,7 +207,7 @@ class KungfuApp {
     const saveButton = createButton({
       variant: 'default',
       className: 'w-full',
-      children: 'Save Note',
+      children: 'Save Note for This Page',
       onClick: async () => {
         const title = titleInput.value.trim();
         const content = contentTextarea.value.trim();
@@ -220,7 +229,7 @@ class KungfuApp {
           alert('Failed to save note: ' + (error as Error).message);
         } finally {
           saveButton.disabled = false;
-          saveButton.textContent = 'Save Note';
+          saveButton.textContent = 'Save Note for This Page';
         }
       }
     });
@@ -231,36 +240,90 @@ class KungfuApp {
 
     container.appendChild(form);
 
-    // Notes list
-    const listContainer = document.createElement('div');
-    listContainer.className = 'space-y-2';
+    // Notes sections
+    const notesContainer = document.createElement('div');
+    notesContainer.className = 'space-y-4';
 
-    notesModule.getAllNotes().then(notes => {
-      if (notes.length === 0) {
+    Promise.all([
+      notesModule.getNotesForCurrentPage(),
+      notesModule.getAllNotes()
+    ]).then(([currentPageNotes, allNotes]) => {
+      // Notes for current page
+      if (currentPageNotes.length > 0) {
+        const currentSection = document.createElement('div');
+        currentSection.className = 'space-y-2';
+
+        const currentHeader = document.createElement('h3');
+        currentHeader.className = 'text-sm font-semibold text-primary flex items-center gap-2';
+        currentHeader.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg> Notes for this page (${currentPageNotes.length})`;
+        currentSection.appendChild(currentHeader);
+
+        currentPageNotes.forEach(note => {
+          currentSection.appendChild(this.createNoteCard(note, true));
+        });
+
+        notesContainer.appendChild(currentSection);
+      }
+
+      // Other notes
+      const otherNotes = allNotes.filter(note => note.url !== this.tabInfo.url);
+      if (otherNotes.length > 0) {
+        const otherSection = document.createElement('div');
+        otherSection.className = 'space-y-2';
+
+        const otherHeader = document.createElement('h3');
+        otherHeader.className = 'text-sm font-semibold text-muted-foreground flex items-center gap-2';
+        otherHeader.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0h8v12H6V4z" clip-rule="evenodd"/></svg> Other notes (${otherNotes.length})`;
+        otherSection.appendChild(otherHeader);
+
+        otherNotes.slice(0, 5).forEach(note => {
+          otherSection.appendChild(this.createNoteCard(note, false));
+        });
+
+        if (otherNotes.length > 5) {
+          const moreInfo = document.createElement('p');
+          moreInfo.className = 'text-xs text-muted-foreground text-center py-2';
+          moreInfo.textContent = `+ ${otherNotes.length - 5} more notes`;
+          otherSection.appendChild(moreInfo);
+        }
+
+        notesContainer.appendChild(otherSection);
+      }
+
+      // Empty state
+      if (allNotes.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'text-sm text-muted-foreground text-center py-8';
         empty.textContent = 'No notes yet. Create your first note!';
-        listContainer.appendChild(empty);
-      } else {
-        notes.forEach(note => {
-          listContainer.appendChild(this.createNoteCard(note));
-        });
+        notesContainer.appendChild(empty);
       }
     });
 
-    container.appendChild(listContainer);
+    container.appendChild(notesContainer);
     return container;
   }
 
-  private createNoteCard(note: Note): HTMLElement {
-    const card = createCard({ className: 'p-4' });
+  private createNoteCard(note: Note, isCurrentPage: boolean = false): HTMLElement {
+    const card = createCard({ className: isCurrentPage ? 'p-4 border-primary/50' : 'p-4' });
 
     const header = document.createElement('div');
     header.className = 'flex items-start justify-between gap-2 mb-2';
 
+    const titleContainer = document.createElement('div');
+    titleContainer.className = 'flex-1';
+
     const titleEl = document.createElement('h3');
-    titleEl.className = 'font-semibold text-sm flex-1';
+    titleEl.className = 'font-semibold text-sm';
     titleEl.textContent = note.title;
+    titleContainer.appendChild(titleEl);
+
+    // Show domain for notes from other pages
+    if (!isCurrentPage) {
+      const domainEl = document.createElement('p');
+      domainEl.className = 'text-xs text-muted-foreground mt-1 flex items-center gap-1';
+      domainEl.innerHTML = `<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg> ${extractDomain(note.url)}`;
+      titleContainer.appendChild(domainEl);
+    }
 
     const deleteBtn = createButton({
       variant: 'ghost',
@@ -275,7 +338,7 @@ class KungfuApp {
       }
     });
 
-    header.appendChild(titleEl);
+    header.appendChild(titleContainer);
     header.appendChild(deleteBtn);
 
     const content = document.createElement('div');
