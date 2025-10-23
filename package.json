@@ -1,0 +1,26 @@
+{
+  "name": "kungfu-chrome-extension",
+  "version": "0.1.0",
+  "description": "AI-powered Chrome sidebar extension for web navigation assistance",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dexie": "^4.0.9",
+    "lucide-react": "^0.462.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.278",
+    "@types/node": "^22.10.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vite-plugin-static-copy": "^2.1.0"
+  }
+}
