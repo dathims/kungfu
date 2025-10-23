@@ -6,6 +6,7 @@ import { createInput } from '@/components/ui/input';
 import { createIcon, icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { getTabInfo } from '@/lib/tabs';
+import { storage } from '@/lib/storage';
 
 // Import all feature modules
 import * as notesModule from '@/lib/notes';
@@ -20,6 +21,7 @@ class KungfuApp {
   private app: HTMLElement;
   private currentTool: Tool = 'notes';
   private tabInfo: { url: string; title: string } = { url: '', title: '' };
+  private theme: 'light' | 'dark' = 'dark';
 
   constructor() {
     this.app = document.getElementById('app')!;
@@ -28,9 +30,34 @@ class KungfuApp {
 
   async init() {
     this.tabInfo = await getTabInfo();
+    await this.loadTheme();
     this.render();
     this.setupMessageListener();
     this.checkChromeAI();
+  }
+
+  private async loadTheme() {
+    const settings = await storage.getSettings();
+    this.theme = settings.theme === 'light' ? 'light' : 'dark';
+    this.applyTheme();
+  }
+
+  private applyTheme() {
+    const html = document.documentElement;
+    if (this.theme === 'light') {
+      html.classList.remove('dark');
+      html.classList.add('light');
+    } else {
+      html.classList.remove('light');
+      html.classList.add('dark');
+    }
+  }
+
+  private async toggleTheme() {
+    this.theme = this.theme === 'dark' ? 'light' : 'dark';
+    this.applyTheme();
+    await storage.setSettings({ theme: this.theme });
+    this.render();
   }
 
   private async checkChromeAI() {
@@ -108,6 +135,9 @@ class KungfuApp {
     const header = document.createElement('div');
     header.className = 'kungfu-header';
 
+    const leftSection = document.createElement('div');
+    leftSection.className = 'flex items-center gap-3';
+
     const title = document.createElement('div');
     title.className = 'flex items-center gap-2';
 
@@ -123,12 +153,24 @@ class KungfuApp {
     title.appendChild(titleText);
 
     const pageInfo = document.createElement('div');
-    pageInfo.className = 'text-xs text-muted-foreground truncate max-w-[200px]';
+    pageInfo.className = 'text-xs text-muted-foreground truncate max-w-[150px]';
     pageInfo.textContent = extractDomain(this.tabInfo.url);
     pageInfo.title = this.tabInfo.url;
 
-    header.appendChild(title);
-    header.appendChild(pageInfo);
+    leftSection.appendChild(title);
+    leftSection.appendChild(pageInfo);
+
+    // Theme toggle button
+    const themeButton = createButton({
+      variant: 'ghost',
+      size: 'icon',
+      className: 'h-9 w-9',
+      children: createIcon(this.theme === 'dark' ? icons.sun : icons.moon, 'w-4 h-4'),
+      onClick: () => this.toggleTheme()
+    });
+
+    header.appendChild(leftSection);
+    header.appendChild(themeButton);
 
     return header;
   }

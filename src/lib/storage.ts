@@ -29,7 +29,7 @@ export const storage = {
   async getSettings(): Promise<AppSettings> {
     const result = await chrome.storage.local.get(SETTINGS_KEY);
     return result[SETTINGS_KEY] || {
-      theme: 'dark',
+      theme: 'light',
       autoSummary: false,
       transcriptionLanguage: 'en-US'
     };
